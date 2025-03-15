@@ -1,0 +1,132 @@
+# MANUAL DE INSTALACIÓN - SpotiMy v0.0.2
+
+SpotiMy – Record your Spotify playlists easily! �
+
+Want to save your favorite Spotify songs without any hassle? SpotiMy lets you automatically record your playlists in high quality and organize them on your device.
+
+✅ Record entire playlists with Cover in minutes.
+✅ Save files in popular MP3 format.
+✅ Organize your music with names and metadata.
+✅ Easy to use, no complex settings.
+✅ Backup forever you playlist if you dont have internet access.
+
+Download now and keep your favorite music forever!
+
+# Why Spoti My...
+
+The idea starts because I currently listen to all my music in playlists directly from spotify. But the problem arises because spotify arbitrarily deletes the songs and this affects especially when I want to listen to a song that I really liked and it is no longer in my playlist :( . That is why I wrote spoti my to make a backup in my local of all my music on spotify and to be able to identify and download the ones that are not there from other sources. And if one day I get fed up with Spotify, I'll have all my music to take with me anywhere.
+
+# ⚠️ AVISO LEGAL: Este software está diseñado únicamente para uso personal. 
+No está permitido redistribuir, compartir ni vender grabaciones realizadas con esta herramienta.
+El usuario asume toda la responsabilidad del uso de este software.
+
+# REQUISITOS PREVIOS
+Antes de instalar SpotiMy, asegúrate de tener lo siguiente:
+
+✅ Sistema operativo: Windows 10/11, macOS o Linux
+✅ Python 3.x instalado
+✅ Spotify Premium (si se requiere para la API)
+✅ Credenciales de API de Spotify (si el script usa autenticación)
+
+# INSTALACIÓN EN WINDOWS Y MACOS
+
+1️⃣ INSTALAR PYTHON Y PIP (SI NO LOS TIENES)
+Si no tienes Python, descárgalo desde https://www.python.org/downloads/ e instálalo.
+Asegúrate de marcar "Add Python to PATH" en la instalación.
+
+Para verificar que está instalado, abre la terminal (CMD o Terminal en macOS) y escribe:
+
+    $ python --version
+    $ pip --version
+
+Si todo está correcto, deberías ver algo como `Python 3.x.x` y `pip 20.x.x`.
+
+2️⃣ DESCARGAR E INSTALAR DEPENDENCIAS
+Ejecuta el siguiente comando en la terminal o CMD:
+
+    $ pip install -r requirements.txt
+
+Si no tienes un archivo `requirements.txt`, instala manualmente:
+
+    $ pip install spotipy sounddevice numpy pydub requests mutagen
+
+En Windows, puede ser necesario instalar portaudio:
+
+    pip install sounddevice
+
+En MACOSX necesitas tener instalado Blackhole para capturar el audio virtual del escritorio mientras se ejecuta Spotify via API.
+
+    $ brew install blackhole-16ch
+
+
+Si `sounddevice` da errores en Windows, descarga e instala portaudio desde:
+
+http://www.portaudio.com/download.html
+
+3️⃣ CONFIGURAR CREDENCIALES DE SPOTIFY
+Si tu script usa la API de Spotify, sigue estos pasos:
+
+1. Ve a https://developer.spotify.com/dashboard/applications.
+2. Crea una nueva aplicación y copia tu:
+   - Client ID
+   - Client Secret
+3. Configura el redirect URI en Spotify Developer:
+   - Agrega `http://localhost:8888/callback/` en la configuración.
+4. Guarda estas credenciales en un archivo `.env` o en variables de entorno:
+
+    $ export SPOTIPY_CLIENT_ID="tu_client_id"
+    $ export SPOTIPY_CLIENT_SECRET="tu_client_secret"
+
+En Windows, usa `set` en lugar de `export`.
+
+4️⃣ EJECUTAR EL SCRIPT
+Editar fichero paylist.txt y agrega los ID de tus playlist favoritas
+
+    $ echo "7z1DgxAdC4lf9jQanCFg8K" >> playlist.txt
+
+Si ya instalaste todo, ejecuta el script con:
+
+    $ python spotimy.py
+
+    $ python spotimy.py PLAYLIST_ID_HASH
+
+Si tienes un error de permisos en macOS, intenta:
+
+    chmod +x spotimy.py
+    ./spotimy.py
+
+# SOLUCIÓN DE PROBLEMAS
+
+❌ ERROR CON PYDUB (FFMPEG NO ENCONTRADO)
+✔ Instala ffmpeg:
+- Windows: Descarga desde https://ffmpeg.org/download.html y agrégalo al PATH.
+- macOS/Linux:
+    brew install ffmpeg  # macOS
+    sudo apt install ffmpeg  # Linux
+
+❌ NO SE DETECTA LA TARJETA DE SONIDO
+✔ En Windows, instala los drivers de audio o ejecuta:
+    pip install sounddevice
+
+❌ ERROR DE AUTENTICACIÓN EN SPOTIFY
+✔ Verifica que las credenciales en `SPOTIPY_CLIENT_ID` y `SPOTIPY_CLIENT_SECRET` sean correctas.
+
+# Changelog
+
+- v0.0.2
+    - Si no encuentra una pista en Spotify la busca en google y la descarga en formato mp3
+    - Mejoras en el formato del fichero debug.txt
+
+- v0.0.1
+    - Permite descargar multiples playlist en base a su ID
+    - Guarda los temas en una carpeta con el nombre del playlist
+    - Graba el audio del escritorio virtual y lo almacena en formato WAV
+    - Transforma el archivo salida wav a mp3
+    - Genera la portada y la inserta como metadato en el archivo mp3
+    - Se realizan ajustes para parcear los string con caracteres raros en el nombre del fichero.
+    - Se manipula excepciones a la hora de no encontrar un track en spotify
+    - Genera fichero debug.txt con la lista de los track no encontrados
+
+# SOPORT
+- Email: support@panicbots.com
+- Página oficial: www.panicbots.com/spotimy

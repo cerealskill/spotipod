@@ -1,0 +1,7 @@
+spotipy
+sounddevice
+numpy
+pydub
+requests
+mutagen
+yt_dlp
