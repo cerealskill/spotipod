@@ -10,11 +10,12 @@ import re
 import yt_dlp
 import spotipy
 import glob
+import subprocess
 
 from pydub import AudioSegment
 from spotipy.oauth2 import SpotifyOAuth
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
+from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, COMM
 from datetime import datetime
 
 # Configuración de credenciales Spotify API desde variables de entorno
@@ -37,7 +38,7 @@ print("""
 ███████║██║     ╚██████╔╝   ██║   ██║    ██║ ╚═╝ ██║   ██║   
 ╚══════╝╚═╝      ╚═════╝    ╚═╝   ╚═╝    ╚═╝     ╚═╝   ╚═╝   
                                                              
-Spotify Playlist Recorder v0.0.2 - Compatible con macOS, Windows y Linux
+Spotify Playlist Recorder v0.0.3 - Compatible con macOS, Windows y Linux
 """)
 
 print("⚠️ AVISO LEGAL: Este software es solo para uso personal. No redistribuir ni compartir grabaciones.")
@@ -103,7 +104,7 @@ def guardar_playlist_json(playlist_id, nombre_playlist, canciones):
     with open(archivo_json, "w", encoding="utf-8") as archivo:
         json.dump(datos_playlist, archivo, indent=4, ensure_ascii=False)
 
-    print(f"✅ Playlist '{nombre_playlist}' guardada en {archivo_json}")
+    print(f"💾 Playlist '{nombre_playlist}' respaldada en {archivo_json}")
 
 # 📡 Obtener dispositivo activo en Spotify
 def obtener_dispositivo_activo():
@@ -253,7 +254,7 @@ def grabar_audio(archivo_wav, duracion, nombre, artista):
 
 
 # 🔄 Convertir WAV a MP3 con portada
-def convertir_a_mp3(archivo_wav, archivo_jpg, titulo, artista, album):
+def convertir_a_mp3(archivo_wav, archivo_jpg, titulo, artista, album, nombre_playlist):
     if not os.path.exists(archivo_wav):
         print("❌ ERROR: No se encontró el archivo WAV para convertir.")
         return None
@@ -267,7 +268,7 @@ def convertir_a_mp3(archivo_wav, archivo_jpg, titulo, artista, album):
         print(f"🎵 Convertido a MP3: {archivo_mp3}")
         
         if os.path.exists(archivo_jpg):
-            incrustar_portada_mp3(archivo_mp3, archivo_jpg, titulo, artista, album)
+            incrustar_portada_mp3(archivo_mp3, archivo_jpg, titulo, artista, album, nombre_playlist)
         else:
             print("⚠️ No se encontró la portada, MP3 sin imagen.")
 
@@ -310,7 +311,7 @@ def descargar_portada(url, nombre_playlist, artista, titulo):
 
 
 # 🎵 Incrustar portada en MP3
-def incrustar_portada_mp3(archivo_mp3, archivo_jpg, titulo, artista, album):
+def incrustar_portada_mp3(archivo_mp3, archivo_jpg, titulo, artista, album, nombre_playlist):
     try:
         audio = MP3(archivo_mp3, ID3=ID3)
 
@@ -323,6 +324,9 @@ def incrustar_portada_mp3(archivo_mp3, archivo_jpg, titulo, artista, album):
         audio.tags.add(TIT2(encoding=3, text=titulo))
         audio.tags.add(TPE1(encoding=3, text=artista))
         audio.tags.add(TALB(encoding=3, text=album))
+        # Se agrega el comentario con el nombre de la playlist para luego en Music poder filtrar y crear la playlist para
+        # Cargar en el IPOD
+        audio.tags.add(COMM(encoding=3, lang="eng", desc="", text=nombre_playlist))
 
         audio.save()
         print(f"✅ Portada incrustada en {archivo_mp3}")
@@ -340,6 +344,141 @@ def organizar_archivo(nombre_playlist, artista, nombre):
     ruta_final = os.path.join(carpeta_playlist, nombre_archivo)
 
     return ruta_final
+
+# Agrega el mp3 generado a la libreria de Music en MACOSX
+def create_playlist(playlist_name):
+    """
+    Crea una playlist en Music si no existe.
+    """
+    script = f'''
+    tell application "Music"
+        -- Verificar si la playlist ya existe
+        set playlistExists to false
+        repeat with p in playlists
+            if name of p is "{playlist_name}" then
+                set playlistExists to true
+                exit repeat
+            end if
+        end repeat
+
+        -- Si no existe, crearla
+        if playlistExists is false then
+            make new playlist with properties {{name:"{playlist_name}"}}
+        end if
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+
+
+def delete_playlist(playlist_name):
+    """
+    Elimina una playlist en Music si existe.
+    """
+    script = f'''
+    tell application "Music"
+        -- Verificar si la playlist existe
+        set playlistExists to false
+        repeat with p in playlists
+            if name of p is "{playlist_name}" then
+                set playlistExists to true
+                exit repeat
+            end if
+        end repeat
+
+        -- Si la playlist existe, eliminarla
+        if playlistExists is true then
+            delete playlist "{playlist_name}"
+        else
+            log "⚠️ La playlist '{playlist_name}' no existe."
+        end if
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+
+def stop_music():
+    """
+    Detiene la reproducción de Music para evitar que cada MP3 importado se reproduzca automáticamente.
+    """
+    script = '''
+    tell application "Music"
+        pause
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+
+def copy_tracks_with_comment(playlist_name):
+    """
+    Copia canciones con un comentario específico a la playlist sin duplicarlas.
+    """
+    create_playlist(playlist_name)  # Asegurar que la playlist exista
+
+    script = f'''
+    tell application "Music"
+        set targetPlaylist to playlist "{playlist_name}"
+        
+        -- Obtener los nombres y artistas de las canciones ya en la playlist
+        set existingTracks to {{}}
+        repeat with t in tracks of targetPlaylist
+            set trackName to name of t
+            set trackArtist to artist of t
+            set existingTracks to existingTracks & {{trackName & " - " & trackArtist}}
+        end repeat
+
+        -- Buscar canciones en la biblioteca con el comentario correspondiente
+        repeat with t in tracks of library playlist 1
+            try
+                if comment of t is not missing value and comment of t contains "{playlist_name}" then
+                    set trackName to name of t
+                    set trackArtist to artist of t
+                    set trackKey to trackName & " - " & trackArtist
+                    
+                    -- Agregar solo si no está en la playlist
+                    if trackKey is not in existingTracks then
+                        duplicate t to targetPlaylist
+                    end if
+                end if
+            end try
+        end repeat
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+
+
+def add_playlist_to_apple_music(directory_path, playlist_name):
+    """
+    Abre todos los archivos MP3 de un directorio en Music para agregarlos a la biblioteca,
+    los coloca en una playlist (creándola si no existe) y detiene la reproducción después de cada archivo.
+    """
+    # Obtener la lista de archivos MP3 en el directorio
+    mp3_files = [os.path.join(directory_path, f) for f in os.listdir(directory_path) if f.endswith(".mp3")]
+
+    if not mp3_files:
+        print("❌ No se encontraron archivos MP3 en el directorio.")
+        return
+
+    create_playlist(playlist_name)
+    # Agregar cada MP3 a la biblioteca y moverlo a la playlist
+    for mp3_path in mp3_files:
+        # Extraer solo el nombre del archivo sin la ruta
+        mp3_filename = os.path.basename(mp3_path)
+
+        script = f'''
+        tell application "Music"
+            try
+                -- Abrir el archivo en Music (esto lo agrega a la biblioteca)
+                open POSIX file "{mp3_path}"
+            on error errorMessage
+                log "⚠️ Error con {mp3_path}: " & errorMessage
+            end try
+            pause
+        end tell
+        '''
+        subprocess.run(["osascript", "-e", script])
+    
+    stop_music()
+    copy_tracks_with_comment(playlist_name)
+    print("🎵 Playlist cargada en Apple Music! 🟢 lista para ser usada en tu iPod")
+    #sync_ipod()
 
 # 🔥 Grabar una playlist completa
 def grabar_playlist(playlist_id):
@@ -389,9 +528,17 @@ def grabar_playlist(playlist_id):
         
         if archivo_wav:
             archivo_jpg = descargar_portada(portada_url, nombre_playlist, artista, nombre)
-            convertir_a_mp3(archivo_wav, archivo_jpg, nombre, artista, album)
-    
+            convertir_a_mp3(archivo_wav, archivo_jpg, nombre, artista, album, nombre_playlist)
+
+    # respaldamos la playlist en un archivo JSON
     guardar_playlist_json(playlist_id, nombre_playlist, canciones)
+
+    # Sincronizamos la playlist con Apple Music (IPOD)
+    current_directory = os.getcwd()
+    directory_path = current_directory+"/"+OUTPUT_DIR+"/"+nombre_playlist
+    
+    #print("📂 Directorio Playlist:", directory_path)
+    add_playlist_to_apple_music(directory_path, nombre_playlist)
 
 # 🏁 Leer playlists desde archivo o argumento
 def leer_playlists():
