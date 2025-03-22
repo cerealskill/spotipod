@@ -1,6 +1,7 @@
 # Ignorar archivos y carpetas del sistema
 .DS_Store
 Thumbs.db
+.gitignore
 
 tools/test_audio/
 
