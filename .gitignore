@@ -1,0 +1,11 @@
+# Ignorar archivos y carpetas del sistema
+.DS_Store
+Thumbs.db
+
+tools/test_audio/
+
+Playlist/
+PlaylistYoutube/
+recovery_tracks/
+recovery_tracks_bkp/
+bkp/
