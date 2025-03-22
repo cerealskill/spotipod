@@ -1,4 +1,4 @@
-# MANUAL DE INSTALACIÓN - SpotiMy v0.0.2
+# MANUAL DE INSTALACIÓN - SpotiMy v0.0.3
 
 SpotiMy – Record your Spotify playlists easily! �
 
@@ -112,6 +112,11 @@ Si tienes un error de permisos en macOS, intenta:
 ✔ Verifica que las credenciales en `SPOTIPY_CLIENT_ID` y `SPOTIPY_CLIENT_SECRET` sean correctas.
 
 # Changelog
+
+- v0.0.3
+    - Soporte a Apple Music
+    - Carga los archivos mp3 de la playlist a la Biblioteca de Apple Music
+    - Crea una Playlist en Apple Music para gestionarlo de mejor manera en tu iPod.
 
 - v0.0.2
     - Si no encuentra una pista en Spotify la busca en google y la descarga en formato mp3
