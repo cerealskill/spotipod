@@ -94,8 +94,10 @@ If you have a permission error on macOS, try:
 
 ❌ ERROR WITH PYDUB (FFMPEG NOT FOUND) 
 ✔ Install ffmpeg:
+
 - Windows: Download from https://ffmpeg.org/download.html and add it to PATH.
 - macOS/Linux:
+
     brew install ffmpeg  # macOS
     sudo apt install ffmpeg  # Linux
 
