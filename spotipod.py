@@ -317,7 +317,7 @@ def descargar_mp3(nombre_cancion, output_folder):
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredquality': '320',  # igual que las grabaciones de Spotify
                 }],
                 'noplaylist': True,
                 'default_search': 'ytsearch',
