@@ -9,8 +9,9 @@ Uso directo:
     python tools/ipod_sync.py --dir Playlist/MiPlaylist "Mi Playlist"
     python tools/ipod_sync.py --ipod /Volumes/iPod --dry-run "Test" *.mp3
 
-Requiere que el iPod requiera un iTunesDB sin firma hash (iPod Video 5G, 4G, Nano 1-2G,
-Mini, etc.). Modelos con hashAB (Nano 6G+/Touch) NO son compatibles.
+Solo funciona en iPods cuya base de datos NO requiere firma: los click-wheel antiguos
+(iPod 1G-5.5G/Video, Photo, Mini, Nano 1G-2G). Los que sí la requieren —iPod Classic
+(6G/7G), Nano 3G-5G (hash58) y Nano 6G+/Touch (hashAB)— deben usar Music.app.
 """
 import argparse
 import glob

@@ -180,11 +180,32 @@ pytest
 They run on a synthetic in-memory database (no personal data); if an iPod is mounted, an extra
 **byte-for-byte round-trip** test runs against its real `iTunesDB`.
 
+## 📱 iPod compatibility
+
+Direct loading (`--ipod`) writes the iPod's `iTunesDB` in pure Python. It works **only** on models
+whose database needs **no signature** — the older click-wheel iPods (pre‑2007). Newer models store
+a checksum in the database that SpotiPOD can't reproduce, so those must be synced through
+**Music.app** instead (SpotiPOD still records the MP3s — you just import them with menu option 1 /
+`--no-apple-music` off).
+
+| iPod model | Direct load (`--ipod`) | How to load |
+|---|---|---|
+| iPod 1G–4G · Photo · Mini | ✅ Yes | Direct |
+| **iPod Video (5G / 5.5G)** | ✅ Yes *(tested)* | Direct |
+| iPod Nano 1G · 2G | ✅ Yes | Direct |
+| iPod Nano 3G · 4G · 5G | ❌ No | **Music.app** |
+| iPod Classic (6G · 6.5G · 7G) | ❌ No | **Music.app** |
+| iPod Nano 6G · 7G | ❌ No | **Music.app** |
+| iPod Touch · iPhone | ❌ No *(not disk mode)* | **Music.app / Finder** |
+
+> [!NOTE]
+> Not sure about your model? SpotiPOD **backs up the `iTunesDB` before writing**. If the playlist
+> doesn't show up after ejecting, your iPod needs a signature — restore the backup and use Music.app.
+
 ## 🛠️ Extra tools (`tools/`)
 
-**Load straight to the iPod database (no Music.app)** — for classic disk-mode iPods that don't
-require a hash signature (iPod Video 5G, 4G, Nano 1G–2G, Mini… **not** Nano 6G+/Touch). Backs up
-the `iTunesDB` before writing.
+**Load straight to the iPod database (no Music.app)** — for the supported models in the
+**iPod compatibility** table above. Backs up the `iTunesDB` before writing.
 
 ```bash
 python tools/ipod_sync.py "My Playlist" --dir Playlist/MyPlaylist
