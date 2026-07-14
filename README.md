@@ -252,6 +252,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
 - iPod: restore the database, list/delete playlists, add to an existing playlist
 - Free-space check before loading; nicer diagnostics panel
 - pytest suite for the iTunesDB reader/writer; packaging (`pip install`, `spotipod` command)
+- Atomic MP3 conversion (no partial files on interruption); clearer progress counter
+  (`pista X/N · nueva Y/M`); "verify recordings" can delete the silent ones to re-record
 </details>
 
 <details>

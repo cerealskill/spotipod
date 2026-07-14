@@ -164,13 +164,14 @@ def esperar_con_barra(duracion, ancho=30):
 
 
 def limpiar_wav_huerfanos(carpeta):
-    """ Borra WAV sueltos de corridas anteriores que crashearon antes de convertir. """
-    for wav in glob.glob(os.path.join(carpeta, "*.wav")):
-        try:
-            os.remove(wav)
-            log.debug(f"🧹 WAV huérfano eliminado: {wav}")
-        except OSError:
-            pass
+    """ Borra WAV y MP3 parciales (.part) de corridas anteriores que se cortaron. """
+    for patron in ("*.wav", "*.mp3.part"):
+        for f in glob.glob(os.path.join(carpeta, patron)):
+            try:
+                os.remove(f)
+                log.debug(f"🧹 Archivo huérfano eliminado: {f}")
+            except OSError:
+                pass
 
 
 # ==================== Spotify / dispositivos ====================
@@ -449,6 +450,9 @@ def convertir_a_mp3(archivo_wav, archivo_jpg, meta, nombre_playlist):
         return None
 
     archivo_mp3 = archivo_wav.replace(".wav", ".mp3")
+    # Conversión atómica: trabajamos en un .part y solo renombramos al final, así un corte
+    # a mitad de conversión nunca deja un MP3 parcial que luego se saltaría por error.
+    parcial = archivo_mp3 + ".part"
 
     try:
         audio = AudioSegment.from_wav(archivo_wav)
@@ -460,15 +464,21 @@ def convertir_a_mp3(archivo_wav, archivo_jpg, meta, nombre_playlist):
         if recortado_ms > 0:
             log.debug(f"✂️ Silencio recortado: {recortado_ms / 1000:.1f}s")
 
-        audio.export(archivo_mp3, format="mp3", bitrate=BITRATE)
+        audio.export(parcial, format="mp3", bitrate=BITRATE)
+        # Etiquetamos el parcial (portada opcional) antes de publicarlo.
+        incrustar_metadata_mp3(parcial, archivo_jpg, meta, nombre_playlist)
+
+        os.replace(parcial, archivo_mp3)  # publicación atómica
         os.remove(archivo_wav)
         log.info(f"🎵 Convertido a MP3: {archivo_mp3}")
-
-        # Escribimos siempre la metadata; la portada es opcional.
-        incrustar_metadata_mp3(archivo_mp3, archivo_jpg, meta, nombre_playlist)
         return archivo_mp3
     except Exception as e:
         log.error(f"❌ ERROR al convertir a MP3: {e}")
+        if os.path.exists(parcial):
+            try:
+                os.remove(parcial)
+            except OSError:
+                pass
         return None
 
 
@@ -739,12 +749,13 @@ def grabar_recurso(tipo, rid):
         return os.path.join(carpeta_playlist, f"{sanitizar_nombre(artista)} - {sanitizar_nombre(titulo)}.mp3")
 
     pendientes = [c for c in canciones if not os.path.exists(ruta_mp3(c["artista"], c["titulo"]))]
-    ya_existen = total - len(pendientes)
+    total_nuevas = len(pendientes)
+    ya_existen = total - total_nuevas
     segundos_restantes = sum(c["duracion"] + OVERHEAD_POR_PISTA for c in pendientes)
 
     if ya_existen:
         log.info(f"⏭ {ya_existen} pista(s) ya grabadas, se omitirán.")
-    log.info(f"⏱ Por grabar: {len(pendientes)} pista(s) — tiempo estimado ~{formatear_duracion(segundos_restantes)}")
+    log.info(f"⏱ Por grabar: {total_nuevas} pista(s) nueva(s) — tiempo estimado ~{formatear_duracion(segundos_restantes)}")
     log.info("----------------------------- [Download Playlist] ----------------------------------")
 
     device_id = obtener_dispositivo_activo()
@@ -753,6 +764,7 @@ def grabar_recurso(tipo, rid):
                   "y déjalo abierto; luego vuelve a ejecutar.")
         return
 
+    nueva = 0  # cuántas pistas NUEVAS llevamos grabadas (distinto de la posición en la playlist)
     for indice, c in enumerate(canciones, start=1):
         duracion = c["duracion"]
         artista_arch = sanitizar_nombre(c["artista"])
@@ -762,10 +774,11 @@ def grabar_recurso(tipo, rid):
         archivo_mp3 = archivo_wav.replace(".wav", ".mp3")
 
         if os.path.exists(archivo_mp3):
-            log.info(f"[{indice}/{total}] ⏭ Ya existe: {artista_arch} - {titulo_arch}")
+            log.info(f"[pista {indice}/{total}] ⏭ ya grabada: {artista_arch} - {titulo_arch}")
             continue
 
-        log.info(f"[{indice}/{total}] 🎧 {c['artista']} - {c['titulo']} "
+        nueva += 1
+        log.info(f"[pista {indice}/{total} · nueva {nueva}/{total_nuevas}] 🎧 {c['artista']} - {c['titulo']} "
                  f"({formatear_duracion(duracion)}) — restante ~{formatear_duracion(segundos_restantes)}")
 
         archivo_wav = grabar_audio(archivo_wav, duracion, device_id, c, nombre_playlist, carpeta_playlist)
@@ -936,7 +949,18 @@ def verificar_grabaciones():
     for m, dbfs, dur in sospechosos:
         detalle = f"{dbfs:.0f} dBFS" if isinstance(dbfs, float) else str(dur)
         log.warning(f"   • {os.path.relpath(m, OUTPUT_DIR)}  ({detalle})")
-    log.info("   Bórralas y vuelve a grabar la playlist: se regrabarán solo las que falten.")
+
+    if sys.stdin.isatty() and input("\n   ¿Borrar las sospechosas para regrabarlas? [s/N]: ").strip().lower() == "s":
+        borradas = 0
+        for m, _, _ in sospechosos:
+            try:
+                os.remove(m)
+                borradas += 1
+            except OSError as e:
+                log.error(f"   No se pudo borrar {m}: {e}")
+        log.info(f"   🗑️  {borradas} borrada(s). Vuelve a grabar la playlist para regrabarlas (solo faltarán esas).")
+    else:
+        log.info("   Bórralas y vuelve a grabar la playlist: se regrabarán solo las que falten.")
 
 
 def configurar_credenciales():
