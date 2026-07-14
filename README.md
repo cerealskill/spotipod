@@ -254,6 +254,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
 - pytest suite for the iTunesDB reader/writer; packaging (`pip install`, `spotipod` command)
 - Atomic MP3 conversion (no partial files on interruption); clearer progress counter
   (`pista X/N · nueva Y/M`); "verify recordings" can delete the silent ones to re-record
+- Per-playlist progress file (recorded / remaining / failed) written after each track, with a
+  resume banner — so a cut recording picks up right where it left off
 </details>
 
 <details>

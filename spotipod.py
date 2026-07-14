@@ -753,8 +753,37 @@ def grabar_recurso(tipo, rid):
     ya_existen = total - total_nuevas
     segundos_restantes = sum(c["duracion"] + OVERHEAD_POR_PISTA for c in pendientes)
 
+    # Archivo de progreso: se actualiza tras cada pista, para poder retomar tras un corte.
+    progreso_path = os.path.join(carpeta_playlist, ".spotipod-progress.json")
+    fallidas = []
+
+    def guardar_progreso(ultima=None):
+        grabadas = sum(1 for c in canciones if os.path.exists(ruta_mp3(c["artista"], c["titulo"])))
+        try:
+            with open(progreso_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "tipo": tipo, "id": rid, "nombre": nombre_playlist,
+                    "total": total, "grabadas": grabadas, "faltantes": total - grabadas,
+                    "fallidas": fallidas, "ultima_pista": ultima,
+                    "actualizado": time.strftime("%Y-%m-%d %H:%M:%S"),
+                }, f, indent=2, ensure_ascii=False)
+        except OSError:
+            pass
+
+    # Resumen de reanudación (lee las fallidas de la corrida anterior, si las hubo).
+    prev_fallidas = []
+    if os.path.exists(progreso_path):
+        try:
+            with open(progreso_path, encoding="utf-8") as f:
+                prev_fallidas = json.load(f).get("fallidas", [])
+        except Exception:
+            pass
+
     if ya_existen:
-        log.info(f"⏭ {ya_existen} pista(s) ya grabadas, se omitirán.")
+        banner = f"🔄 Reanudando '{nombre_playlist}': {ya_existen}/{total} ya grabadas"
+        if prev_fallidas:
+            banner += f", {len(prev_fallidas)} fallaron en Spotify la última vez"
+        log.info(banner)
     log.info(f"⏱ Por grabar: {total_nuevas} pista(s) nueva(s) — tiempo estimado ~{formatear_duracion(segundos_restantes)}")
     log.info("----------------------------- [Download Playlist] ----------------------------------")
 
@@ -763,6 +792,8 @@ def grabar_recurso(tipo, rid):
         log.error("❌ No apareció ningún dispositivo Spotify. Abre Spotify y reproduce una canción, "
                   "y déjalo abierto; luego vuelve a ejecutar.")
         return
+
+    guardar_progreso()  # snapshot inicial
 
     nueva = 0  # cuántas pistas NUEVAS llevamos grabadas (distinto de la posición en la playlist)
     for indice, c in enumerate(canciones, start=1):
@@ -778,14 +809,18 @@ def grabar_recurso(tipo, rid):
             continue
 
         nueva += 1
-        log.info(f"[pista {indice}/{total} · nueva {nueva}/{total_nuevas}] 🎧 {c['artista']} - {c['titulo']} "
+        etiqueta = f"{c['artista']} - {c['titulo']}"
+        log.info(f"[pista {indice}/{total} · nueva {nueva}/{total_nuevas}] 🎧 {etiqueta} "
                  f"({formatear_duracion(duracion)}) — restante ~{formatear_duracion(segundos_restantes)}")
 
         archivo_wav = grabar_audio(archivo_wav, duracion, device_id, c, nombre_playlist, carpeta_playlist)
         if archivo_wav:
             archivo_jpg = descargar_portada(c["portada"], nombre_playlist, c["artista"], c["titulo"])
             convertir_a_mp3(archivo_wav, archivo_jpg, c, nombre_playlist)
+        else:
+            fallidas.append(etiqueta)  # Spotify no la reprodujo (se intentó recuperar)
 
+        guardar_progreso(etiqueta)  # persistimos el avance tras cada pista
         segundos_restantes = max(0, segundos_restantes - (duracion + OVERHEAD_POR_PISTA))
         log.info("----------------------------- [Next Track] -----------------------------------------")
 
