@@ -256,6 +256,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
   (`pista X/N · nueva Y/M`); "verify recordings" can delete the silent ones to re-record
 - Per-playlist progress file (recorded / remaining / failed) written after each track, with a
   resume banner — so a cut recording picks up right where it left off
+- Recording integrity: while capturing, SpotiPOD checks via the API that Spotify is still
+  playing the right track in sync; on pause / skip / drift it discards the take and retries
 </details>
 
 <details>

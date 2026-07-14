@@ -135,32 +135,61 @@ def formatear_duracion(segundos):
     return f"{seg}s"
 
 
-def esperar_con_barra(duracion, ancho=30):
+def grabar_monitorizado(duracion, device_id, uri, ancho=30):
     """
-    Espera a que termine la grabación en curso mostrando una barra de progreso en tiempo
-    real. La barra llega al 100% al terminar la canción (el colchón de +1 s se espera al
-    final). Si la salida no es una terminal interactiva, solo bloquea con sd.wait().
+    Graba `duracion`+1 s desde el dispositivo virtual y, en paralelo, vigila vía la API que
+    Spotify siga reproduciendo la pista `uri` y en sincronía. Si detecta pausa, cambio de
+    pista o desfase, aborta la toma. Devuelve (grabacion, ok, motivo).
+
+    Muestra una barra de progreso en tiempo real (si la salida es una terminal).
     """
     buffer_total = duracion + 1.0
-    if not sys.stdout.isatty():
-        sd.wait()
-        return
+    muestras = int(SAMPLE_RATE * buffer_total)
+    grabacion = sd.rec(muestras, samplerate=SAMPLE_RATE, channels=CHANNELS,
+                       dtype="int16", device=DISPOSITIVO_ID)
 
     inicio = time.time()
+    ultimo_check = 0.0
+    ok, motivo = True, ""
+    tty = sys.stdout.isatty()
+
     while (time.time() - inicio) < buffer_total:
         transcurrido = time.time() - inicio
-        frac = min(1.0, transcurrido / duracion) if duracion > 0 else 1.0
-        lleno = int(ancho * frac)
-        barra = "█" * lleno + "░" * (ancho - lleno)
-        sys.stdout.write(f"\r   ⏺ [{barra}] {frac * 100:5.1f}%  "
-                         f"{formatear_duracion(transcurrido)} / {formatear_duracion(duracion)}")
-        sys.stdout.flush()
+
+        if tty:
+            frac = min(1.0, transcurrido / duracion) if duracion > 0 else 1.0
+            lleno = int(ancho * frac)
+            sys.stdout.write(f"\r   ⏺ [{'█' * lleno}{'░' * (ancho - lleno)}] {frac * 100:5.1f}%  "
+                             f"{formatear_duracion(transcurrido)} / {formatear_duracion(duracion)}")
+            sys.stdout.flush()
+
+        # Verificación cada ~8 s, salvo en los últimos 2 s (ahí el track termina y Spotify avanza).
+        if transcurrido - ultimo_check >= 8 and (buffer_total - transcurrido) > 2.0:
+            ultimo_check = transcurrido
+            try:
+                estado = sp.current_playback()
+            except Exception:
+                estado = None  # blip de red puntual: no lo tratamos como fallo
+            if estado is not None:
+                item = estado.get("item") or {}
+                prog = (estado.get("progress_ms") or 0) / 1000
+                if not estado.get("is_playing"):
+                    ok, motivo = False, "reproducción pausada"
+                elif item.get("uri") and item["uri"] != uri:
+                    ok, motivo = False, "Spotify cambió de pista"
+                elif abs(prog - transcurrido) > 8:
+                    ok, motivo = False, f"desincronizado ({prog:.0f}s vs {transcurrido:.0f}s)"
+                if not ok:
+                    break
         time.sleep(0.2)
 
-    sd.wait()
-    sys.stdout.write(f"\r   ⏺ [{'█' * ancho}] 100.0%  "
-                     f"{formatear_duracion(duracion)} / {formatear_duracion(duracion)}\n")
-    sys.stdout.flush()
+    sd.stop()
+    if tty:
+        marca = "█" * ancho if ok else "▒" * ancho
+        sys.stdout.write(f"\r   ⏺ [{marca}] {'100.0%' if ok else 'ABORTADA'}  "
+                         f"{formatear_duracion(duracion)} / {formatear_duracion(duracion)}\n")
+        sys.stdout.flush()
+    return grabacion, ok, motivo
 
 
 def limpiar_wav_huerfanos(carpeta):
@@ -406,25 +435,38 @@ def grabar_audio(archivo_wav, duracion, device_id, meta, nombre_playlist, carpet
     except Exception as e:
         log.warning(f"⚠️ No se pudo ajustar el volumen al 100%: {e}")
 
-    # Volvemos al inicio para no perder la intro (durante los reintentos ya sonaron unos
-    # segundos) y dejamos un breve margen de estabilización.
-    try:
-        sp.seek_track(0, device_id=device_id)
-    except Exception:
-        pass
-    time.sleep(0.5)
+    # Grabación con verificación de integridad: hasta 2 tomas limpias. Antes de cada toma
+    # volvemos al inicio de la pista (así no perdemos la intro tras los reintentos).
+    grabacion = None
+    for intento_grab in range(2):
+        try:
+            sp.seek_track(0, device_id=device_id)
+        except Exception:
+            pass
+        time.sleep(0.5)
 
-    log.info(f"🎙 Grabando {formatear_duracion(duracion)}: {archivo_wav}")
+        sufijo = f" (reintento {intento_grab})" if intento_grab else ""
+        log.info(f"🎙 Grabando {formatear_duracion(duracion)}{sufijo}: {archivo_wav}")
+        try:
+            grabacion, ok, motivo = grabar_monitorizado(duracion, device_id, meta["uri"])
+        except KeyboardInterrupt:
+            sd.stop()
+            sys.stdout.write("\n")
+            raise
 
-    try:
-        # Colchón de 1 s al final para no cortar el cierre del tema por latencia.
-        muestras = int(SAMPLE_RATE * (duracion + 1.0))
-        grabacion = sd.rec(muestras, samplerate=SAMPLE_RATE, channels=CHANNELS, dtype="int16", device=DISPOSITIVO_ID)
-        esperar_con_barra(duracion)
-    except KeyboardInterrupt:
-        sd.stop()
-        sys.stdout.write("\n")
-        raise
+        if ok:
+            break
+        log.warning(f"⚠️ Toma descartada: {motivo}. Reintentando la pista…")
+        grabacion = None
+        try:  # reconfirmar reproducción antes de reintentar
+            sp.start_playback(device_id=device_id, uris=[meta["uri"]])
+            time.sleep(1.5)
+        except Exception:
+            pass
+
+    if grabacion is None:
+        log.warning(f"❌ No se logró una grabación limpia de: {artista} - {nombre}. Se reintentará luego.")
+        return None
 
     # Verificamos que realmente se capturó audio y no silencio (típico si BlackHole no
     # está seleccionado como salida de Spotify).
