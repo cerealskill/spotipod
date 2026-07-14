@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "spotipod"
 version = "0.0.6"
 description = "Graba tus playlists de Spotify a MP3 y cárgalas en tu iPod (con carga directa a la base de datos del iPod)."
-readme = { file = "README", content-type = "text/markdown" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Cereal" }]
