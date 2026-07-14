@@ -243,6 +243,23 @@ def restore_database(ipod, backup_dir, log=print):
     log("   Expulsa el iPod para que recargue la biblioteca.")
 
 
+def compatibilidad(ipod):
+    """
+    Determina si el iPod conectado soporta la carga directa a la base de datos.
+    Devuelve (compatible_bool, motivo).
+    """
+    itdb = _itdb_path(ipod)
+    if not os.path.isfile(itdb):
+        return False, "no se encontró iTunesDB (¿modo disco activado?)"
+    try:
+        root, _, _ = db.parse_file(itdb)
+    except Exception as e:
+        return False, f"no se pudo leer el iTunesDB ({e})"
+    if db.requiere_firma(root):
+        return False, "el iPod firma su base de datos (Classic 6G/7G o Nano 3G+) → usa Music.app"
+    return True, "compatible (base de datos sin firma)"
+
+
 def sync(ipod, nombre_playlist, mp3s, dry_run=False, log=print):
     itdb = os.path.join(ipod, "iPod_Control", "iTunes", "iTunesDB")
     if not os.path.isfile(itdb):
@@ -256,6 +273,12 @@ def sync(ipod, nombre_playlist, mp3s, dry_run=False, log=print):
     if root.serialize() != original:
         raise RuntimeError("El iTunesDB no re-serializa idéntico; abortando por seguridad.")
     log("✅ iTunesDB verificado (round-trip idéntico).")
+
+    # Compatibilidad: si el iPod firma su DB, no podemos reproducir la firma → abortar.
+    if db.requiere_firma(root):
+        raise RuntimeError(
+            "Este iPod firma su base de datos (iPod Classic 6G/7G o Nano 3G+); la carga directa "
+            "no es compatible. Los MP3 ya están grabados: cárgalos con Music.app (menú opción 1).")
 
     dirs = carpetas_musica(ipod)
     if not dirs:

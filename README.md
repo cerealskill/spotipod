@@ -199,8 +199,10 @@ a checksum in the database that SpotiPOD can't reproduce, so those must be synce
 | iPod Touch · iPhone | ❌ No *(not disk mode)* | **Music.app / Finder** |
 
 > [!NOTE]
-> Not sure about your model? SpotiPOD **backs up the `iTunesDB` before writing**. If the playlist
-> doesn't show up after ejecting, your iPod needs a signature — restore the backup and use Music.app.
+> You don't need to know your model — SpotiPOD **auto-detects** compatibility from the connected
+> iPod's database. It's shown in *Diagnostics*, and direct load **refuses unsupported models**
+> (pointing you to Music.app) instead of writing a database the iPod would reject. It also backs
+> up the `iTunesDB` before any write.
 
 ## 🛠️ Extra tools (`tools/`)
 
@@ -279,6 +281,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
   resume banner — so a cut recording picks up right where it left off
 - Recording integrity: while capturing, SpotiPOD checks via the API that Spotify is still
   playing the right track in sync; on pause / skip / drift it discards the take and retries
+- Auto-detects iPod direct-load compatibility from the connected device and refuses unsupported
+  models (Classic 6G/7G, Nano 3G+), pointing to Music.app, instead of writing a rejected DB
 </details>
 
 <details>

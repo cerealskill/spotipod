@@ -893,6 +893,23 @@ def _cargar_ipod_module():
     return ipod_sync, ipod
 
 
+def _ipod_montado_incompatible():
+    """
+    Chequeo silencioso: (True, motivo) si hay un iPod montado que NO soporta la carga directa;
+    (False, "") si no hay iPod montado o es compatible.
+    """
+    try:
+        sys.path.insert(0, TOOLS_DIR)
+        import ipod_sync as mod
+        ipod = mod.detectar_ipod(None if IPOD_MOUNT in (None, "auto") else IPOD_MOUNT)
+        if not ipod:
+            return False, ""
+        compat, motivo = mod.compatibilidad(ipod)
+        return (not compat), motivo
+    except Exception:
+        return False, ""
+
+
 def sincronizar_ipod_directo(carpeta_playlist, nombre_playlist):
     """ Carga los MP3 de la carpeta directo a la base de datos del iPod (sin Music.app). """
     mp3s = sorted(glob.glob(os.path.join(carpeta_playlist, "*.mp3")))
@@ -1136,6 +1153,8 @@ def diagnostico():
                  f"{total:.0f} GB · {libre:.1f} GB libres ({usado_pct:.0f}% usado)")
             stats = _mod.ipod_stats(ipod)
             fila("Biblioteca", True, f"{stats['tracks']} pistas · {stats['playlists']} playlists")
+            compat, motivo = _mod.compatibilidad(ipod)
+            fila("Carga directa", compat, "compatible" if compat else motivo)
         except Exception as e:
             fila("Base de datos", False, f"no se pudo leer: {e}")
     print()
@@ -1483,6 +1502,12 @@ def cargar_grabada_al_ipod():
     Lista las playlists grabadas localmente en OUTPUT_DIR y carga la elegida al iPod,
     indicando el nombre de la playlist a crear/sincronizar (por defecto, el de la carpeta).
     """
+    incompat, motivo = _ipod_montado_incompatible()
+    if incompat:
+        print(_color("31", f"   ⚠️  Este iPod no soporta carga directa: {motivo}"))
+        print("      Los MP3 están en Playlist/; impórtalos con Music.app para cargarlos.")
+        return
+
     carpetas = [d for d in sorted(glob.glob(os.path.join(OUTPUT_DIR, "*")))
                 if os.path.isdir(d) and glob.glob(os.path.join(d, "*.mp3"))]
     if not carpetas:
@@ -1616,6 +1641,14 @@ def _render_menu():
 def _grabar_desde_menu(destino):
     """ destino: 'apple' (Music), 'ipod' (directo) o 'local' (solo guardar). """
     global IPOD_MOUNT, APPLE_MUSIC
+    if destino == "ipod":
+        incompat, motivo = _ipod_montado_incompatible()
+        if incompat:
+            print(_color("31", f"   ⚠️  El iPod conectado no soporta carga directa: {motivo}"))
+            if input("   ¿Grabar igual y cargarlo luego con Music.app? [s/N]: ").strip().lower() != "s":
+                return
+            destino = "apple"  # graba y sincroniza vía Music.app
+
     entrada = input("URL/ID (playlist, álbum o track; Enter = playlist.txt): ").strip()
     if destino == "ipod":
         IPOD_MOUNT, APPLE_MUSIC = "auto", False

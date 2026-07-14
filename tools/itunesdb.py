@@ -383,6 +383,20 @@ def _titulo_playlist(mhyp):
     return None
 
 
+def requiere_firma(root):
+    """
+    Heurística de compatibilidad con la escritura directa. Devuelve True si el iTunesDB
+    lleva una firma (hash) — iPods que NO la soportan (Classic 6G/7G, Nano 3G+).
+
+    El hash58 se guarda en 20 bytes a partir del offset 0x58 de la cabecera mhbd; en los
+    iPods sin firma (1G–5.5G/Video, Photo, Mini, Nano 1G–2G) esa zona está en ceros.
+    """
+    h = root.header
+    if len(h) < 0x6c:
+        return False
+    return any(b != 0 for b in h[0x58:0x6c])
+
+
 def list_playlists(root):
     """ Devuelve [{'nombre', 'items', 'master'}] de todas las playlists. """
     out = []
