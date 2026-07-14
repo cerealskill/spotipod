@@ -1,0 +1,26 @@
+# Copia este archivo a spotipod.toml (o ~/.spotipod.toml) para fijar tus preferencias
+# y no tener que repetir los flags. Precedencia: flag de CLI > este archivo > valores por defecto.
+# (Requiere Python 3.11+.)
+
+# Carpeta de salida de los MP3.
+output_dir = "Playlist"
+
+# Bitrate del MP3.
+bitrate = "320k"
+
+# Frecuencia de muestreo. Omítela (comenta la línea) para auto-detectarla del dispositivo.
+# sample_rate = 48000
+
+# Pico mínimo (int16) para no considerar la grabación silencio.
+silence_threshold = 300
+
+# Reintentos de reproducción por pista.
+retries = 3
+
+# Sincronizar con Apple Music al terminar (false = no).
+apple_music = true
+
+# Cargar directo a la base de datos del iPod (sin Music.app):
+#   ipod = true              # autodetecta el iPod montado
+#   ipod = "/Volumes/iPod"   # ruta de montaje explícita
+# ipod = false

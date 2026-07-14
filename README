@@ -1,32 +1,36 @@
-# INSTALLATION MANUAL - SpotiPOD v0.0.3
+# INSTALLATION MANUAL - SpotiPOD v0.0.6
 
-SpotiPOD – Record your Spotify playlists easily! �
+SpotiPOD – Record your Spotify playlists easily! 🎶
 
-Want to save your favorite Spotify songs without any hassle? SpotiMy lets you automatically record your playlists in high quality and organize them on your device.
+Want to save your favorite Spotify songs without any hassle? SpotiPOD lets you automatically record your playlists in high quality and organize them on your device.
 
-✅ Record entire playlists with Cover in minutes.
-✅ Save files in popular MP3 format.
-✅ Organize your music with names and metadata.
+✅ Record entire playlists with cover in minutes.
+✅ Save files in popular MP3 format (320k) with rich metadata (track number, disc, year, album artist).
+✅ Silence detection and auto-trim for clean files.
+✅ Progress and ETA while recording.
+✅ Accepts playlist IDs, URIs or URLs.
 ✅ Easy to use, no complex settings.
-✅ Backup forever you playlist if you dont have internet access.
+✅ Back up your playlist forever so you can listen without internet access.
 
 Download now and keep your favorite music forever!
 
-# Why Spoti My...
+# Why SpotiPOD...
 
-The idea starts because I currently listen to all my music in playlists directly from spotify. But the problem arises because spotify arbitrarily deletes the songs and this affects especially when I want to listen to a song that I really liked and it is no longer in my playlist :( . That is why I wrote spoti my to make a backup in my local of all my music on spotify and to be able to identify and download the ones that are not there from other sources. And if one day I get fed up with Spotify, I'll have all my music to take with me anywhere.
+The idea starts because I currently listen to all my music in playlists directly from Spotify. But the problem arises because Spotify arbitrarily deletes the songs and this affects especially when I want to listen to a song that I really liked and it is no longer in my playlist :( . That is why I wrote SpotiPOD to make a backup in my local of all my music on Spotify and to be able to identify and download the ones that are not there from other sources. And if one day I get fed up with Spotify, I'll have all my music to take with me anywhere.
 
 # ⚠️ LEGAL NOTICE: This software is designed for personal use only.
 Redistributing, sharing, or selling recordings made with this tool is not permitted. 
 The user assumes all responsibility for the use of this software.
 
 # PREREQUISITES
-Before installing SpotiMy, make sure you have the following:
+Before installing SpotiPOD, make sure you have the following:
 
 ✅ Operating system: Windows 10/11, macOS or Linux
 ✅ Python 3.x installed
-✅ Spotify Premium (if required for the API)
-✅ Spotify API credentials (if the script uses authentication)
+✅ Spotify Premium (required — the Web API can only control playback on Premium accounts)
+✅ Spotify API credentials (Client ID / Client Secret)
+✅ ffmpeg installed (for MP3 conversion)
+✅ A virtual audio device (BlackHole on macOS, VB-Cable on Windows) set as Spotify's output
 
 # INSTALLATION ON WINDOWS AND MACOS
 
@@ -39,21 +43,43 @@ To verify that it's installed, open the terminal (CMD or Terminal on macOS) and 
 
 If everything is correct, you should see something like `Python 3.x.x` and `pip 20.x.x`.
 
-2️⃣ DOWNLOAD AND INSTALL DEPENDENCIES Run the following command in the terminal or CMD:
+2️⃣ DOWNLOAD AND INSTALL DEPENDENCIES
 
+Recommended: use a virtual environment so you don't touch your system Python:
+
+    $ python3 -m venv .venv
+    $ source .venv/bin/activate      # on Windows: .venv\Scripts\activate
     $ pip install -r requirements.txt
+
+(then run the tool with `python spotipod.py ...`, or `.venv/bin/python spotipod.py ...`)
 
 If you don't have a `requirements.txt` file, install manually:
 
-    $ pip install spotipy sounddevice numpy pydub requests mutagen
+    $ pip install spotipy sounddevice numpy pydub requests mutagen yt_dlp python-dotenv
+
+⚠️ Python 3.13+: pydub needs the `audioop` module, which was removed from the standard
+library in 3.13. Install the backport:
+
+    $ pip install audioop-lts
 
 On Windows, it may be necessary to install portaudio:
 
     pip install sounddevice
 
-On MACOSX you need to have Blackhole installed to capture virtual desktop audio while Spotify runs via API.
+On MACOSX you need to have BlackHole installed to capture virtual desktop audio while Spotify runs via API.
+The 2-channel (stereo) version is enough for music:
 
-    $ brew install blackhole-16ch
+    $ brew install blackhole-2ch
+
+⚠️ IMPORTANT: SpotiPOD records whatever the desktop is playing, so before recording you must:
+  - Set BlackHole (or your Multi-Output Device) as the SYSTEM output — not just the plain
+    speakers. Creating a Multi-Output Device is not enough; it must be selected as the output,
+    or BlackHole receives no audio and recordings come out silent (SpotiPOD warns you when a
+    recording's level is near silence).
+  - Match the sample rate. In "Audio MIDI Setup", set BlackHole, the Multi-Output Device and
+    your speakers to the SAME rate. SpotiPOD auto-detects the capture device's rate, so no flag
+    is needed; you can still force one with `--sample-rate 48000` if required.
+  - Mute system notifications (Focus / Do Not Disturb) so no "ding" leaks into a track.
 
 
 If `sounddevice` gives errors on Windows, download and install portaudio from:
@@ -67,28 +93,158 @@ http://www.portaudio.com/download.html
    - Client ID
    - Client Secret
 3. Configure the redirect URI in Spotify Developer:
-   - Add `http://localhost:8888/callback/` in the configuration.
-4. in the configuration. `.env` file or in environment variables:
+   - Add `http://127.0.0.1:8080` in the configuration.
+   - NOTE: Spotify no longer accepts `http://localhost` — you must use the loopback IP
+     `http://127.0.0.1` (or an HTTPS URL).
+   - This must match SpotiPOD's redirect URI. The default is `http://127.0.0.1:8080`; you can
+     override it with the `SPOTIFY_REDIRECT_URI` environment variable (just add whatever value
+     you use to the app's Redirect URIs in the dashboard).
+4. Set your credentials, either in a `.env` file (auto-loaded) or as environment variables:
 
-    $ export SPOTIPY_CLIENT_ID="your_client_id"
-    $ export SPOTIPY_CLIENT_SECRET="your_client_secret"
+    SPOTIFY_CLIENT_ID="your_client_id"
+    SPOTIFY_CLIENT_SECRET="your_client_secret"
+    # optional:
+    # SPOTIFY_REDIRECT_URI="http://127.0.0.1:8080"
+
+   As environment variables instead:
+
+    $ export SPOTIFY_CLIENT_ID="your_client_id"
+    $ export SPOTIFY_CLIENT_SECRET="your_client_secret"
 
 On Windows, use `set` instead of `export`.
 
-4️⃣ RUN THE SCRIPT Edit the playlist.txt file and add the IDs of your favorite playlists
+4️⃣ RUN THE SCRIPT Edit the playlist.txt file and add your favorite playlists (ID, URI or URL — one per line)
 
-    $ echo "7z1DgxAdC4lf9jQanCFg8K" >> playlist.txt
+    $ echo "https://open.spotify.com/playlist/7z1DgxAdC4lf9jQanCFg8K" >> playlist.txt
 
-If you've already installed everything, run the script with:
+If you've already installed everything, just run it with no arguments to get an interactive
+menu:
 
-    $ python spotimy.py
+    $ python spotipod.py
 
-    $ python spotimy.py PLAYLIST_ID_HASH
+     S) Browse and record MY Spotify playlists (list / pick one, many or all)
+     B) Search Spotify by name and record
+     1) Record playlist / album / track → Apple Music
+     2) Record playlist / album / track → straight to the iPod
+     3) Record playlist / album / track → local only (no sync, iPod not needed)
+     4) Update a backup (record only the new tracks)
+     5) Load a locally-recorded playlist to the iPod (pick one, name it)
+     6) Back up the iPod database
+     7) Restore the iPod database (from a backup)
+     8) Manage iPod playlists (list / delete)
+     9) Back up the music FROM the iPod to your Mac
+    10) Eject the iPod
+    11) Export M3U (play the backup in any player)
+    12) Verify recordings (detect silent ones)
+    13) Manage local recordings (list / delete)
+    14) Test audio capture
+    15) Configure credentials (.env)
+    16) Diagnostics / info
+     0) Exit
+
+Record-now-load-later: use option 3 to record without the iPod plugged in (files land in
+`Playlist/<name>/`), then later plug in the iPod and use option 5 to pick that recording and
+give it a playlist name on the device. From the CLI this is `--no-apple-music` (record only),
+then `python tools/ipod_sync.py "New Name" --dir Playlist/<name>`.
+
+You can pass a playlist, album or track directly (URL, URI or ID):
+
+    $ python spotipod.py https://open.spotify.com/album/XXXX
+    $ python spotipod.py spotify:track:XXXX
+
+Or pass a playlist directly (skips the menu):
+
+    $ python spotipod.py PLAYLIST_ID_OR_URL
+
+Useful options:
+
+    $ python spotipod.py --no-apple-music        # skip syncing to Apple Music
+    $ python spotipod.py --ipod                    # load straight into the iPod DB (no Music.app)
+    $ python spotipod.py --bitrate 256k           # change MP3 bitrate
+    $ python spotipod.py --output-dir ~/Music/bk  # change output folder
+    $ python spotipod.py -v                        # verbose logging
+    $ python spotipod.py --help                    # see all options
+
+A detailed log is written to `spotipod.log`.
+
+The recording sample rate is auto-detected from your capture device (e.g. 48 kHz for BlackHole),
+so you normally don't need `--sample-rate`. If no Spotify device is available, SpotiPOD waits and
+tells you to open Spotify and play something.
+
+# AUDIO QUALITY
+
+Files are saved (and copied to the iPod as-is, no re-encoding) as **MP3 320 kbps CBR, 16-bit
+stereo** at the capture device's sample rate. The capture is a bit-perfect digital loopback
+through BlackHole (no analog degradation). Note the real quality ceiling is the source: Spotify
+streams lossy Ogg Vorbis (~320 kbps on Premium), so 320 kbps MP3 preserves essentially all of
+what Spotify delivers, but it is not lossless. Tip: enable "Normalize volume" in Spotify for
+even loudness across tracks. YouTube-recovered fallbacks are 192 kbps. The bitrate is
+configurable with `--bitrate` or `spotipod.toml`.
+
+# CONFIG FILE (optional)
+
+To avoid repeating flags, put your preferences in `spotipod.toml` (current folder) or
+`~/.spotipod.toml`. Precedence: CLI flag > config file > built-in default. Requires Python 3.11+.
+
+    output_dir = "Playlist"
+    bitrate = "320k"
+    # sample_rate = 48000     # omit to auto-detect
+    apple_music = true
+    ipod = false              # true = load straight to the iPod, or "/Volumes/iPod"
+
+See `spotipod.toml.example`.
 
 If you have a permission error on macOS, try:
 
-    chmod +x spotimy.py
-    ./spotimy.py
+    chmod +x spotipod.py
+    ./spotipod.py
+
+# INSTALL AS A COMMAND (optional)
+
+Install it so you can run `spotipod` from anywhere (editable install keeps the tools working):
+
+    $ pip install -e .
+    $ spotipod --help
+    $ spotipod                       # interactive menu
+
+# TESTS
+
+The iTunesDB reader/writer (the riskiest part — it writes to your iPod) is covered by tests:
+
+    $ pip install -e ".[dev]"
+    $ pytest
+
+They run on a synthetic in-memory database (no personal data); if an iPod is mounted, an extra
+byte-for-byte round-trip test runs against its real iTunesDB.
+
+# EXTRA TOOLS (tools/)
+
+## Load a playlist straight to the iPod database (no Music.app)
+
+For classic disk-mode iPods that do NOT require a hash signature (iPod Video 5G, 4G,
+Nano 1G-2G, Mini, etc. — NOT Nano 6G+/Touch), SpotiPOD can write the playlist directly
+into the iPod's `iTunesDB`, copying the MP3s to `iPod_Control/Music`. It backs up the
+existing `iTunesDB` before writing.
+
+    $ python spotipod.py --ipod https://open.spotify.com/playlist/XXXX   # record + load to iPod
+    $ python spotipod.py --ipod /Volumes/iPod ...                        # explicit mount point
+
+Or standalone, for MP3s you already have:
+
+    $ python tools/ipod_sync.py "My Playlist" song1.mp3 song2.mp3
+    $ python tools/ipod_sync.py "My Playlist" --dir Playlist/MyPlaylist
+    $ python tools/ipod_sync.py "Test" --dry-run *.mp3      # preview, writes nothing
+
+Remember to eject the iPod (Finder or `diskutil eject /Volumes/iPod`) so it reloads the DB.
+
+## Back up the music FROM an iPod to your Mac
+
+Copies the music off a disk-mode iPod and rebuilds a tidy Artist/Album/Title library from
+the ID3 tags (iTunes/Music can't copy music back to a computer normally):
+
+    $ python tools/ipod_backup.py                       # auto-detect iPod → ./iPod_Backup
+    $ python tools/ipod_backup.py --dest ~/Music/ipod    # choose destination
+    $ python tools/ipod_backup.py --dry-run              # preview without copying
 
 # TROUBLESHOOTING
 
@@ -106,10 +262,60 @@ If you have a permission error on macOS, try:
 
     pip install sounddevice
 
-❌ SPOTIFY AUTHENTICATION ERROR 
-✔ Verify that the credentials in `SPOTIPY_CLIENT_ID` and `SPOTIPY_CLIENT_SECRET` are correct.
+❌ SPOTIFY AUTHENTICATION ERROR
+✔ Verify that the credentials in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` are correct,
+  and that the Redirect URI registered in the dashboard matches `SPOTIFY_REDIRECT_URI`
+  (default `http://127.0.0.1:8080`).
+
+❌ RECORDINGS ARE SILENT
+✔ Make sure the Multi-Output Device (with BlackHole) is selected as the SYSTEM output — not the
+  plain speakers. SpotiPOD warns when a recording's peak level is near silence. You can verify
+  the routing with `python tools/check_level.py` while music is playing.
+
+❌ ModuleNotFoundError: No module named 'audioop'  (Python 3.13+)
+✔ Install the backport: `pip install audioop-lts` (already in requirements.txt).
+
+❌ AUDIO SOUNDS WRONG / DRIFTS OUT OF SYNC
+✔ Sample-rate mismatch. Set BlackHole, the Multi-Output Device and your speakers to the same
+  rate in Audio MIDI Setup, and record at that rate (e.g. `--sample-rate 48000`).
+
+❌ redirect_uri: Insecure
+✔ Spotify no longer accepts `http://localhost`. Register `http://127.0.0.1:8080` in the
+  dashboard (matching `SPOTIFY_REDIRECT_URI`).
 
 # Changelog
+
+- v0.0.6
+    - Update a backup (record only new tracks), search Spotify by name, export M3U, manage local recordings
+    - Record-only mode (no iPod needed) + load a recorded playlist to the iPod later, naming it
+    - Menu option to browse your own Spotify playlists and record one, several or all
+    - Auto-detect the recording sample rate from the capture device (no more --sample-rate)
+    - Wait/guide when no Spotify device is active, and wake it up (transfer_playback)
+    - Config file support (spotipod.toml / ~/.spotipod.toml)
+    - Record albums and tracks too, not only playlists (URL/URI/ID)
+    - Interactive redesigned menu (color, live status) grouped in 5 sections
+    - iPod: restore the database from a backup, list/delete playlists, add to an existing playlist
+    - Utilities: test audio capture, verify recordings (detect silent ones), credential wizard
+    - Free-space check before loading to the iPod; nicer diagnostics panel
+    - pytest test suite for the iTunesDB reader/writer; packaging (pip install, `spotipod` command)
+
+- v0.0.5
+    - Direct iPod database loading with `--ipod` (writes iTunesDB without Music.app; classic
+      disk-mode iPods with no hash signature). Pure-Python iTunesDB reader/writer in tools/itunesdb.py
+    - tools/ipod_sync.py: copy MP3s to the iPod and add a playlist, with automatic iTunesDB backup
+    - tools/ipod_backup.py: back up the music FROM an iPod to your Mac, rebuilt from ID3 tags
+    - Recording progress bar per track
+
+- v0.0.4
+    - Records from the start of each track (no more lost intros) and captures full playlists (>100 tracks)
+    - Rich ID3 metadata: track number, disc, year and album artist
+    - Silence detection warning and automatic silence trimming
+    - Sets Spotify volume to 100% before recording for consistent levels
+    - Progress and ETA per track
+    - Accepts playlist IDs, URIs and URLs
+    - YouTube-recovered tracks are tagged and synced to the iPod playlist too
+    - CLI flags (argparse), .env support, logging to spotipod.log, and cleanup on Ctrl+C
+    - Fixed env var names (SPOTIFY_*) and redirect URI to match the code
 
 - v0.0.3
     - Apple Music support

@@ -1,7 +1,10 @@
-spotipy
-sounddevice
-numpy
-pydub
-requests
-mutagen
-yt_dlp
+spotipy==2.24.0
+sounddevice==0.4.7
+numpy==1.26.4
+pydub==0.25.1
+requests==2.32.3
+mutagen==1.47.0
+yt_dlp==2024.12.13
+python-dotenv==1.0.1
+# pydub usa el módulo 'audioop', eliminado del stdlib en Python 3.13+
+audioop-lts==0.2.2; python_version >= "3.13"

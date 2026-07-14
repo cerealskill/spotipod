@@ -1,0 +1,24 @@
+# Secrets / credentials
+.env
+.cache
+
+# Generated output
+Playlist/
+recovery_tracks/
+iPod_Backup/
+iPod_DB_Backup/
+spotipod.log
+debug.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# macOS
+.DS_Store

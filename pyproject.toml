@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spotipod"
+version = "0.0.6"
+description = "Graba tus playlists de Spotify a MP3 y cárgalas en tu iPod (con carga directa a la base de datos del iPod)."
+readme = { file = "README", content-type = "text/markdown" }
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Cereal" }]
+keywords = ["spotify", "ipod", "itunesdb", "backup", "music"]
+
+dependencies = [
+    "spotipy>=2.24",
+    "sounddevice>=0.4.7",
+    "numpy>=1.26",
+    "pydub>=0.25.1",
+    "requests>=2.32",
+    "mutagen>=1.47",
+    "yt_dlp>=2024.12.13",
+    "python-dotenv>=1.0",
+    'audioop-lts>=0.2; python_version >= "3.13"',
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+spotipod = "spotipod:cli"
+
+[tool.setuptools]
+py-modules = ["spotipod"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
