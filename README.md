@@ -284,6 +284,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
   playing the right track in sync; on pause / skip / drift it discards the take and retries
 - Auto-detects iPod direct-load compatibility from the connected device and refuses unsupported
   models (Classic 6G/7G, Nano 3G+), pointing to Music.app, instead of writing a rejected DB
+- Download a playlist FROM the iPod to the local `Playlist/` folder; recording now recognizes
+  already-present tracks by a normalized name match (so iPod-downloaded tracks aren't re-recorded)
 </details>
 
 <details>

@@ -790,7 +790,17 @@ def grabar_recurso(tipo, rid):
     def ruta_mp3(artista, titulo):
         return os.path.join(carpeta_playlist, f"{sanitizar_nombre(artista)} - {sanitizar_nombre(titulo)}.mp3")
 
-    pendientes = [c for c in canciones if not os.path.exists(ruta_mp3(c["artista"], c["titulo"]))]
+    # Índice normalizado de los MP3 ya presentes en la carpeta, para reconocer pistas que
+    # ya tienes AUNQUE varíe el formato del nombre (p. ej. descargadas antes desde el iPod).
+    existentes_norm = {limpiar_nombre_archivo(os.path.basename(f)[:-4])
+                       for f in glob.glob(os.path.join(carpeta_playlist, "*.mp3"))}
+
+    def ya_grabada(c):
+        if os.path.exists(ruta_mp3(c["artista"], c["titulo"])):
+            return True
+        return limpiar_nombre_archivo(f"{c['artista']} - {c['titulo']}") in existentes_norm
+
+    pendientes = [c for c in canciones if not ya_grabada(c)]
     total_nuevas = len(pendientes)
     ya_existen = total - total_nuevas
     segundos_restantes = sum(c["duracion"] + OVERHEAD_POR_PISTA for c in pendientes)
@@ -800,7 +810,7 @@ def grabar_recurso(tipo, rid):
     fallidas = []
 
     def guardar_progreso(ultima=None):
-        grabadas = sum(1 for c in canciones if os.path.exists(ruta_mp3(c["artista"], c["titulo"])))
+        grabadas = sum(1 for c in canciones if ya_grabada(c))
         try:
             with open(progreso_path, "w", encoding="utf-8") as f:
                 json.dump({
@@ -846,7 +856,7 @@ def grabar_recurso(tipo, rid):
         archivo_wav = os.path.join(carpeta_playlist, f"{artista_arch} - {titulo_arch}.wav")
         archivo_mp3 = archivo_wav.replace(".wav", ".mp3")
 
-        if os.path.exists(archivo_mp3):
+        if ya_grabada(c):
             log.info(f"[pista {indice}/{total}] ⏭ ya grabada: {artista_arch} - {titulo_arch}")
             continue
 
