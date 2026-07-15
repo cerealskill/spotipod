@@ -94,6 +94,16 @@ def limpiar_nombre_archivo(nombre):
     return "".join(c if c.isalnum() or c in " _-" else "_" for c in nombre).strip().lower()
 
 
+def clave_dedup(texto):
+    """
+    Clave robusta para comparar si una pista ya existe: solo letras/números y espacios
+    (ignora acentos vía NFC, y puntuación/símbolos como ? - _ que difieren entre el nombre
+    de archivo saneado y el título de Spotify). "Fast?", "Fast-", "Fast_" y "Fast" → iguales.
+    """
+    texto = unicodedata.normalize("NFC", texto).lower()
+    return " ".join("".join(c if c.isalnum() else " " for c in texto).split())
+
+
 def sanitizar_nombre(nombre):
     """ Normaliza un nombre para usarlo como archivo o carpeta (consistente en todo el flujo). """
     nombre = re.sub(r'[\/:*?"<>|]', '-', nombre)
@@ -794,18 +804,15 @@ def grabar_recurso(tipo, rid):
     def ruta_mp3(artista, titulo):
         return os.path.join(carpeta_playlist, f"{sanitizar_nombre(artista)} - {sanitizar_nombre(titulo)}.mp3")
 
-    # Índice normalizado de los MP3 ya presentes en la carpeta, para reconocer pistas que
-    # ya tienes AUNQUE varíe el formato del nombre (p. ej. descargadas antes desde el iPod).
-    existentes_norm = {limpiar_nombre_archivo(os.path.basename(f)[:-4])
+    # Índice de dedup de los MP3 ya presentes en la carpeta, para reconocer pistas que ya
+    # tienes AUNQUE varíe el formato del nombre (descargadas del iPod, ?/-/acentos, etc.).
+    existentes_norm = {clave_dedup(os.path.basename(f)[:-4])
                        for f in glob.glob(os.path.join(carpeta_playlist, "*.mp3"))}
 
     def ya_grabada(c):
         if os.path.exists(ruta_mp3(c["artista"], c["titulo"])):
             return True
-        # Saneamos igual que al guardar (p. ej. '?' → '-') antes de normalizar, para comparar
-        # contra los nombres de archivo reales de forma consistente.
-        objetivo = f"{sanitizar_nombre(c['artista'])} - {sanitizar_nombre(c['titulo'])}"
-        return limpiar_nombre_archivo(objetivo) in existentes_norm
+        return clave_dedup(f"{c['artista']} - {c['titulo']}") in existentes_norm
 
     pendientes = [c for c in canciones if not ya_grabada(c)]
     total_nuevas = len(pendientes)
