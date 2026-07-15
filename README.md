@@ -114,7 +114,7 @@ python spotipod.py
 |---|---|---|---|---|
 | Browse my playlists | → Apple Music | Load recorded playlist → iPod | Export M3U | Test capture |
 | Search & record | → iPod directo | Download playlist (or all) → local | Verify recordings | Configure creds |
-| | → local only | Back up / restore DB | Manage recordings | Diagnostics |
+| | → local only | Back up / restore DB | List / delete local playlists | Diagnostics |
 | | Update a backup | Manage playlists · Back up music | | |
 | | | Mount · Eject | | |
 

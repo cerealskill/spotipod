@@ -1699,7 +1699,7 @@ _MENU_SECCIONES = [
     ("GRABACIONES LOCALES", [
         ("14", "Exportar M3U", "reproducir en cualquier player"),
         ("15", "Verificar grabaciones", "detectar mudas"),
-        ("16", "Gestionar grabaciones", "listar / borrar"),
+        ("16", "Listar / borrar playlists locales", ""),
     ]),
     ("UTILIDADES", [
         ("17", "Probar captura de audio", ""),
