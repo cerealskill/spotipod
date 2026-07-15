@@ -288,6 +288,24 @@ def descargar_playlist(ipod, nombre, dest, log=print):
     return copiados
 
 
+def descargar_todas_playlists(ipod, dest, log=print):
+    """ Descarga TODAS las playlists de usuario del iPod a dest/. Devuelve (nº playlists, copiados). """
+    root = _cargar_verificado(_itdb_path(ipod))
+    nombres = []
+    for p in db.list_playlists(root):
+        if not p["master"] and p["nombre"] and p["nombre"] not in nombres:
+            nombres.append(p["nombre"])
+    if not nombres:
+        log("El iPod no tiene playlists de usuario.")
+        return 0, 0
+    log(f"⬇️  Descargando {len(nombres)} playlist(s) del iPod → {dest}")
+    total = 0
+    for n in nombres:
+        total += descargar_playlist(ipod, n, dest, log=log)
+    log(f"✅ Listo: {len(nombres)} playlist(s), {total} archivos nuevos en {dest}")
+    return len(nombres), total
+
+
 def compatibilidad(ipod):
     """
     Determina si el iPod conectado soporta la carga directa a la base de datos.

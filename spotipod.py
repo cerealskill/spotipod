@@ -1584,6 +1584,19 @@ def descargar_playlist_del_ipod():
         log.error(f"❌ ERROR al descargar la playlist: {e}")
 
 
+def descargar_todas_del_ipod():
+    """ Descarga todas las playlists del iPod a la carpeta local Playlist/. """
+    mod, ipod = _cargar_ipod_module()
+    if not ipod:
+        return
+    if input(f"   ¿Descargar TODAS las playlists del iPod a '{OUTPUT_DIR}/'? [s/N]: ").strip().lower() != "s":
+        return
+    try:
+        mod.descargar_todas_playlists(ipod, OUTPUT_DIR, log=log.info)
+    except Exception as e:
+        log.error(f"❌ ERROR al descargar las playlists: {e}")
+
+
 def cargar_grabada_al_ipod():
     """
     Lista las playlists grabadas localmente en OUTPUT_DIR y carga la elegida al iPod,
@@ -1675,22 +1688,23 @@ _MENU_SECCIONES = [
     ("iPod", [
         ("5", "Cargar una playlist grabada al iPod", "local → iPod"),
         ("6", "Descargar una playlist del iPod", "iPod → local"),
-        ("7", "Respaldar la base de datos", ""),
-        ("8", "Restaurar la base de datos", "desde backup"),
-        ("9", "Gestionar playlists", "listar / borrar"),
-        ("10", "Respaldar la música del iPod", "→ Mac"),
-        ("11", "Montar el iPod", ""),
-        ("12", "Expulsar el iPod", ""),
+        ("7", "Descargar TODAS las playlists del iPod", "iPod → local"),
+        ("8", "Respaldar la base de datos", ""),
+        ("9", "Restaurar la base de datos", "desde backup"),
+        ("10", "Gestionar playlists", "listar / borrar"),
+        ("11", "Respaldar la música del iPod", "→ Mac"),
+        ("12", "Montar el iPod", ""),
+        ("13", "Expulsar el iPod", ""),
     ]),
     ("GRABACIONES LOCALES", [
-        ("13", "Exportar M3U", "reproducir en cualquier player"),
-        ("14", "Verificar grabaciones", "detectar mudas"),
-        ("15", "Gestionar grabaciones", "listar / borrar"),
+        ("14", "Exportar M3U", "reproducir en cualquier player"),
+        ("15", "Verificar grabaciones", "detectar mudas"),
+        ("16", "Gestionar grabaciones", "listar / borrar"),
     ]),
     ("UTILIDADES", [
-        ("16", "Probar captura de audio", ""),
-        ("17", "Configurar credenciales", ".env"),
-        ("18", "Diagnóstico / info", ""),
+        ("17", "Probar captura de audio", ""),
+        ("18", "Configurar credenciales", ".env"),
+        ("19", "Diagnóstico / info", ""),
     ]),
 ]
 
@@ -1776,31 +1790,33 @@ def menu_interactivo():
         elif op == "6":
             descargar_playlist_del_ipod()
         elif op == "7":
+            descargar_todas_del_ipod()
+        elif op == "8":
             dest = input("Carpeta destino (Enter = iPod_DB_Backup): ").strip() or "iPod_DB_Backup"
             respaldar_db_ipod(dest)
-        elif op == "8":
+        elif op == "9":
             dest = input("Carpeta de backups (Enter = iPod_DB_Backup): ").strip() or "iPod_DB_Backup"
             restaurar_db_ipod(dest)
-        elif op == "9":
-            gestionar_playlists_ipod()
         elif op == "10":
+            gestionar_playlists_ipod()
+        elif op == "11":
             dest = input("Carpeta destino (Enter = iPod_Backup): ").strip() or "iPod_Backup"
             subprocess.run([sys.executable, os.path.join(TOOLS_DIR, "ipod_backup.py"), "--dest", dest])
-        elif op == "11":
-            montar_ipod()
         elif op == "12":
-            expulsar_ipod()
+            montar_ipod()
         elif op == "13":
-            exportar_m3u()
+            expulsar_ipod()
         elif op == "14":
-            verificar_grabaciones()
+            exportar_m3u()
         elif op == "15":
-            gestionar_grabaciones_locales()
+            verificar_grabaciones()
         elif op == "16":
-            probar_captura()
+            gestionar_grabaciones_locales()
         elif op == "17":
-            configurar_credenciales()
+            probar_captura()
         elif op == "18":
+            configurar_credenciales()
+        elif op == "19":
             diagnostico()
         elif op in ("0", "q", "salir", "exit"):
             print("\n   👋 Hasta luego.\n")
