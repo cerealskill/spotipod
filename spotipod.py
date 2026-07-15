@@ -802,7 +802,10 @@ def grabar_recurso(tipo, rid):
     def ya_grabada(c):
         if os.path.exists(ruta_mp3(c["artista"], c["titulo"])):
             return True
-        return limpiar_nombre_archivo(f"{c['artista']} - {c['titulo']}") in existentes_norm
+        # Saneamos igual que al guardar (p. ej. '?' → '-') antes de normalizar, para comparar
+        # contra los nombres de archivo reales de forma consistente.
+        objetivo = f"{sanitizar_nombre(c['artista'])} - {sanitizar_nombre(c['titulo'])}"
+        return limpiar_nombre_archivo(objetivo) in existentes_norm
 
     pendientes = [c for c in canciones if not ya_grabada(c)]
     total_nuevas = len(pendientes)
