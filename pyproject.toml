@@ -19,7 +19,7 @@ dependencies = [
     "pydub>=0.25.1",
     "requests>=2.32",
     "mutagen>=1.47",
-    "yt_dlp>=2024.12.13",
+    "yt_dlp>=2025.1",   # mantener al día: YouTube rompe las versiones viejas
     "python-dotenv>=1.0",
     'audioop-lts>=0.2; python_version >= "3.13"',
 ]

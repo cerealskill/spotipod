@@ -4,7 +4,8 @@ numpy==1.26.4
 pydub==0.25.1
 requests==2.32.3
 mutagen==1.47.0
-yt_dlp==2024.12.13
+# yt_dlp NO se fija: YouTube rompe las versiones viejas, mantenlo al día (pip install -U yt_dlp)
+yt_dlp>=2025.1
 python-dotenv==1.0.1
 # pydub usa el módulo 'audioop', eliminado del stdlib en Python 3.13+
 audioop-lts==0.2.2; python_version >= "3.13"

@@ -262,6 +262,13 @@ Sample-rate mismatch. Set BlackHole, the Multi-Output and your speakers to the s
 Audio MIDI Setup (or force it with `--sample-rate 48000`).
 </details>
 
+<details>
+<summary><b>YouTube fallback fails (HTTP 400, signature/format errors)</b></summary>
+
+YouTube changes often and breaks older `yt_dlp`. Update it: `pip install -U yt_dlp`. For more
+reliable extraction, install a JS runtime: `brew install deno` (macOS).
+</details>
+
 ## 📜 Changelog
 
 <details>
