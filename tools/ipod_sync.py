@@ -17,6 +17,7 @@ import argparse
 import glob
 import os
 import random
+import re
 import shutil
 import string
 import sys
@@ -241,6 +242,50 @@ def restore_database(ipod, backup_dir, log=print):
             copiados += 1
     log(f"✅ Base de datos restaurada desde {backup_dir} ({copiados} archivos).")
     log("   Expulsa el iPod para que recargue la biblioteca.")
+
+
+def _sanitizar(nombre):
+    nombre = re.sub(r'[\/:*?"<>|]', '-', nombre)
+    return nombre.replace("\n", " ").replace("\t", " ").strip() or "sin_nombre"
+
+
+def descargar_playlist(ipod, nombre, dest, log=print):
+    """
+    Copia los MP3 de una playlist del iPod a 'dest/<nombre>/' con nombres 'Artista - Título.mp3'.
+    Idempotente (salta los que ya existen). Devuelve el número de archivos copiados.
+    """
+    root = _cargar_verificado(_itdb_path(ipod))
+    tracks = db.tracks_de_playlist(root, nombre)
+    if not tracks:
+        log(f"⚠️ La playlist '{nombre}' no existe en el iPod o no tiene pistas.")
+        return 0
+
+    carpeta = os.path.join(dest, _sanitizar(nombre))
+    os.makedirs(carpeta, exist_ok=True)
+    log(f"⬇️  Descargando '{nombre}' ({len(tracks)} pistas) → {carpeta}")
+
+    copiados = omitidos = faltantes = 0
+    for i, t in enumerate(tracks, 1):
+        loc = t["location"]  # ':iPod_Control:Music:F49:TOQN.mp3'
+        origen = os.path.join(ipod, loc.strip(":").replace(":", "/")) if loc else ""
+        destino = os.path.join(carpeta, _sanitizar(f"{t['artista']} - {t['titulo']}") + ".mp3")
+
+        if not origen or not os.path.isfile(origen):
+            faltantes += 1
+            log(f"[{i}/{len(tracks)}] ⚠️ No se encontró el archivo: {t['artista']} - {t['titulo']}")
+            continue
+        if os.path.exists(destino):
+            omitidos += 1
+            continue
+        shutil.copy2(origen, destino)
+        copiados += 1
+        log(f"[{i}/{len(tracks)}] ⬇️  {t['artista']} - {t['titulo']}")
+
+    resumen = f"✅ '{nombre}': {copiados} copiadas, {omitidos} ya estaban"
+    if faltantes:
+        resumen += f", {faltantes} sin archivo"
+    log(resumen + f" → {carpeta}")
+    return copiados
 
 
 def compatibilidad(ipod):

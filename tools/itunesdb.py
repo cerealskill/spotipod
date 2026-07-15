@@ -409,6 +409,41 @@ def list_playlists(root):
     return out
 
 
+def _mhod_texto(mhit, mtype):
+    for c in mhit.children:
+        if c.type == b"mhod" and _u32(c.header, 0x0c) == mtype:
+            b = c.raw
+            L = _u32(b, 4)
+            return b[16:16 + L].decode("utf-16-le", "replace")
+    return ""
+
+
+def tracks_de_playlist(root, nombre):
+    """
+    Devuelve [{titulo, artista, album, location}] de la primera playlist de usuario cuyo
+    título coincide. 'location' es la ruta interna del iPod (':iPod_Control:Music:F##:XXXX.mp3').
+    """
+    porid = {_u32(m.header, 0x10): m for m in iter_chunks(root, b"mhit")}
+    mhyp = encontrar(root, b"mhyp",
+                     lambda m: _u32(m.header, 0x14) != 1 and _titulo_playlist(m) == nombre)
+    if mhyp is None:
+        return []
+    out = []
+    for c in mhyp.children:
+        if c.type != b"mhip":
+            continue
+        mhit = porid.get(_u32(c.header, 0x18))
+        if mhit is None:
+            continue
+        out.append({
+            "titulo": _mhod_texto(mhit, MHOD_TITLE),
+            "artista": _mhod_texto(mhit, MHOD_ARTIST),
+            "album": _mhod_texto(mhit, MHOD_ALBUM),
+            "location": _mhod_texto(mhit, MHOD_LOCATION),
+        })
+    return out
+
+
 def remove_playlist(root, nombre):
     """
     Elimina las playlists de usuario (no master) cuyo título coincide. NO borra los tracks

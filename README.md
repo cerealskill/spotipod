@@ -112,10 +112,10 @@ python spotipod.py
 
 | SPOTIFY | GRABAR | iPod | LOCAL | UTILIDADES |
 |---|---|---|---|---|
-| Browse my playlists | → Apple Music | Load recorded playlist | Export M3U | Test capture |
-| Search & record | → iPod directo | Back up / restore DB | Verify recordings | Configure creds |
-| | → local only | Manage playlists | Manage recordings | Diagnostics |
-| | Update a backup | Back up iPod music | | |
+| Browse my playlists | → Apple Music | Load recorded playlist → iPod | Export M3U | Test capture |
+| Search & record | → iPod directo | Download playlist → local | Verify recordings | Configure creds |
+| | → local only | Back up / restore DB | Manage recordings | Diagnostics |
+| | Update a backup | Manage playlists · Back up music | | |
 | | | Mount · Eject | | |
 
 </div>
