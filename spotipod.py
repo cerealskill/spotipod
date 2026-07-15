@@ -9,6 +9,7 @@ import wave
 import sounddevice as sd
 import numpy as np
 import re
+import unicodedata
 import yt_dlp
 import spotipy
 import glob
@@ -87,6 +88,9 @@ def configurar_logging(verbose=False):
 
 def limpiar_nombre_archivo(nombre):
     """ Reemplaza caracteres inválidos y normaliza el texto para comparación de archivos. """
+    # NFC: macOS guarda los nombres en Unicode descompuesto (NFD) y Spotify los da compuestos
+    # (NFC); sin unificar, los temas con acentos/ñ no coincidirían al comparar.
+    nombre = unicodedata.normalize("NFC", nombre)
     return "".join(c if c.isalnum() or c in " _-" else "_" for c in nombre).strip().lower()
 
 

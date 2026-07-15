@@ -286,6 +286,8 @@ Audio MIDI Setup (or force it with `--sample-rate 48000`).
   models (Classic 6G/7G, Nano 3G+), pointing to Music.app, instead of writing a rejected DB
 - Download a playlist FROM the iPod to the local `Playlist/` folder; recording now recognizes
   already-present tracks by a normalized name match (so iPod-downloaded tracks aren't re-recorded)
+- Fix Unicode dedup on macOS: normalize names to NFC so accented/ñ tracks (stored NFD on disk)
+  match the Spotify names and aren't re-downloaded as duplicates
 </details>
 
 <details>
