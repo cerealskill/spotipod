@@ -996,6 +996,55 @@ def gestionar_playlists_ipod():
         log.error(f"❌ ERROR al borrar la playlist: {e}")
 
 
+def montar_ipod():
+    """ Monta el iPod conectado (útil si lo expulsaste pero sigue enchufado). Solo macOS. """
+    if sys.platform != "darwin":
+        log.info("ℹ️ Montaje automático solo disponible en macOS (usa tu gestor de archivos).")
+        return
+    ya = _ipod_montado()
+    if ya:
+        log.info(f"✅ El iPod ya está montado en {ya}")
+        return
+
+    import plistlib
+    log.info("🔌 Buscando un iPod conectado...")
+    try:
+        salida = subprocess.run(["diskutil", "list", "-plist", "external", "physical"],
+                                capture_output=True, text=True).stdout
+        discos = plistlib.loads(salida.encode()).get("AllDisksAndPartitions", [])
+    except Exception as e:
+        log.error(f"❌ No se pudieron listar los discos: {e}")
+        return
+
+    candidato = None
+    for d in discos:
+        ident = d.get("DeviceIdentifier")
+        if not ident:
+            continue
+        try:
+            info = plistlib.loads(subprocess.run(
+                ["diskutil", "info", "-plist", ident], capture_output=True, text=True).stdout.encode())
+        except Exception:
+            continue
+        nombre = f"{info.get('MediaName', '')} {info.get('IORegistryEntryName', '')}"
+        if "iPod" in nombre:
+            candidato = ident
+            break
+
+    if not candidato:
+        log.error("❌ No se detectó ningún iPod conectado. Conéctalo y activa el modo disco.")
+        return
+
+    log.info(f"🔧 Montando /dev/{candidato}...")
+    subprocess.run(["diskutil", "mountDisk", f"/dev/{candidato}"])
+    time.sleep(1)
+    nuevo = _ipod_montado()
+    if nuevo:
+        log.info(f"✅ iPod montado en {nuevo}")
+    else:
+        log.error("❌ No se pudo montar. ¿El iPod está en modo disco?")
+
+
 def expulsar_ipod():
     """ Expulsa el iPod con seguridad (para que recargue la biblioteca). """
     mod, ipod = _cargar_ipod_module()
@@ -1591,17 +1640,18 @@ _MENU_SECCIONES = [
         ("7", "Restaurar la base de datos", "desde backup"),
         ("8", "Gestionar playlists", "listar / borrar"),
         ("9", "Respaldar la música del iPod", "→ Mac"),
-        ("10", "Expulsar el iPod", ""),
+        ("10", "Montar el iPod", ""),
+        ("11", "Expulsar el iPod", ""),
     ]),
     ("GRABACIONES LOCALES", [
-        ("11", "Exportar M3U", "reproducir en cualquier player"),
-        ("12", "Verificar grabaciones", "detectar mudas"),
-        ("13", "Gestionar grabaciones", "listar / borrar"),
+        ("12", "Exportar M3U", "reproducir en cualquier player"),
+        ("13", "Verificar grabaciones", "detectar mudas"),
+        ("14", "Gestionar grabaciones", "listar / borrar"),
     ]),
     ("UTILIDADES", [
-        ("14", "Probar captura de audio", ""),
-        ("15", "Configurar credenciales", ".env"),
-        ("16", "Diagnóstico / info", ""),
+        ("15", "Probar captura de audio", ""),
+        ("16", "Configurar credenciales", ".env"),
+        ("17", "Diagnóstico / info", ""),
     ]),
 ]
 
@@ -1696,18 +1746,20 @@ def menu_interactivo():
             dest = input("Carpeta destino (Enter = iPod_Backup): ").strip() or "iPod_Backup"
             subprocess.run([sys.executable, os.path.join(TOOLS_DIR, "ipod_backup.py"), "--dest", dest])
         elif op == "10":
-            expulsar_ipod()
+            montar_ipod()
         elif op == "11":
-            exportar_m3u()
+            expulsar_ipod()
         elif op == "12":
-            verificar_grabaciones()
+            exportar_m3u()
         elif op == "13":
-            gestionar_grabaciones_locales()
+            verificar_grabaciones()
         elif op == "14":
-            probar_captura()
+            gestionar_grabaciones_locales()
         elif op == "15":
-            configurar_credenciales()
+            probar_captura()
         elif op == "16":
+            configurar_credenciales()
+        elif op == "17":
             diagnostico()
         elif op in ("0", "q", "salir", "exit"):
             print("\n   👋 Hasta luego.\n")
