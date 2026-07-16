@@ -117,15 +117,19 @@ def escapar_applescript(texto):
 
 def recortar_silencio(audio, umbral_db=-50.0, margen_ms=50):
     """
-    Recorta el silencio del inicio y el final de un AudioSegment. Deja un pequeño
-    margen para no comerse el ataque de la primera nota ni la cola/reverberación.
-    Si la pista fuese silencio completo, devuelve el audio sin tocar.
+    Recorta el silencio del inicio y del final de un AudioSegment.
+
+    El FINAL se trata de forma conservadora (umbral más bajo -65 dBFS + margen amplio de
+    400 ms) para NO cortar finales suaves, reverberaciones o fades de la canción; solo se
+    quita el silencio casi digital del colchón de grabación. Si la pista fuese silencio
+    completo, devuelve el audio sin tocar.
     """
     inicio = detect_leading_silence(audio, silence_threshold=umbral_db)
-    fin = detect_leading_silence(audio.reverse(), silence_threshold=umbral_db)
+    # Final conservador: solo silencio real (~ -65 dBFS) y deja 400 ms de margen.
+    fin = detect_leading_silence(audio.reverse(), silence_threshold=umbral_db - 15)
 
     inicio = max(0, inicio - margen_ms)
-    fin_pos = len(audio) - max(0, fin - margen_ms)
+    fin_pos = len(audio) - max(0, fin - 400)
 
     if inicio >= fin_pos:  # todo era silencio: no recortamos
         return audio
