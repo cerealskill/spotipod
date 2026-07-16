@@ -1508,6 +1508,37 @@ def actualizar_respaldo():
     _elegir_destino_y_grabar([f"spotify:{tipo}:{rid}"])
 
 
+def reanudar_tarea():
+    """ Detecta grabaciones incompletas (por su archivo de progreso) y reanuda la elegida. """
+    if not _asegurar_spotify():
+        return
+    tareas = []
+    for prog in glob.glob(os.path.join(OUTPUT_DIR, "*", ".spotipod-progress.json")):
+        try:
+            with open(prog, encoding="utf-8") as f:
+                d = json.load(f)
+        except Exception:
+            continue
+        if d.get("faltantes", 0) > 0 and d.get("id") and d.get("tipo"):
+            tareas.append(d)
+    if not tareas:
+        log.info("✅ No hay grabaciones incompletas por reanudar.")
+        return
+
+    tareas.sort(key=lambda d: d.get("actualizado", ""), reverse=True)
+    print(f"\n   {_color('1;36', 'Grabaciones por reanudar')}:")
+    for i, d in enumerate(tareas, 1):
+        detalle = _color("2", f"({d.get('grabadas', 0)}/{d.get('total', '?')} listas · "
+                               f"faltan {d['faltantes']} · {d.get('actualizado', '')})")
+        print(f"     {_color('1;32', str(i).rjust(2))}  {d['nombre']}  {detalle}")
+    sel = input(f"\n   Nº a reanudar [1-{len(tareas)}] (Enter = cancelar): ").strip()
+    if not sel.isdigit() or not (1 <= int(sel) <= len(tareas)):
+        return
+    d = tareas[int(sel) - 1]
+    print(f"   🔄 Reanudando '{d['nombre']}' — se grabarán solo las {d['faltantes']} que faltan.")
+    _elegir_destino_y_grabar([f"spotify:{d['tipo']}:{d['id']}"])
+
+
 def _escribir_m3u(carpeta):
     """ Genera un .m3u (nombres relativos + #EXTINF) para la carpeta. Devuelve (ruta, nº). """
     from mutagen.easyid3 import EasyID3
@@ -1702,6 +1733,7 @@ _MENU_SECCIONES = [
         ("2", "Playlist / álbum / track", "→ iPod directo"),
         ("3", "Playlist / álbum / track", "→ solo local (sin sincronizar)"),
         ("4", "Actualizar un respaldo", "solo pistas nuevas"),
+        ("R", "Reanudar tarea", "grabación incompleta"),
     ]),
     ("iPod", [
         ("5", "Cargar una playlist grabada al iPod", "local → iPod"),
@@ -1795,6 +1827,8 @@ def menu_interactivo():
             menu_spotify()
         elif op.lower() == "b":
             buscar_spotify()
+        elif op.lower() == "r":
+            reanudar_tarea()
         elif op == "1":
             _grabar_desde_menu("apple")
         elif op == "2":
