@@ -408,7 +408,9 @@ def sync(ipod, nombre_playlist, mp3s, dry_run=False, log=print):
     db.parse_file(tmp)  # lanza si es inválida
     os.replace(tmp, itdb)
 
-    log(f"\n✅ {len(metas)} tracks añadidos y playlist '{nombre_playlist}' creada en el iPod.")
+    log(f"\n✅ {len(metas)} tracks añadidos y playlist '{nombre_playlist}' creada en el iPod:")
+    for n, meta in enumerate(metas, 1):
+        log(f"   🆕 {n}. {meta['artista']} - {meta['titulo']}")
     log("   Expulsa el iPod con seguridad antes de desconectarlo.")
     return len(metas)
 
