@@ -235,6 +235,11 @@ def crear_cliente_spotify():
         log.error("   (o ponlas en un archivo .env)")
         sys.exit(1)
 
+    # Cache anclado a la carpeta del script (no al cwd): así el token se encuentra y se
+    # refresca aunque ejecutes spotipod desde cualquier directorio. Con el default relativo,
+    # correr desde otra carpeta hacía que no hallara el token y saliera un 401 "Access token missing".
+    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
+
     try:
         scope = "user-read-playback-state user-modify-playback-state playlist-read-private"
         return spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -242,6 +247,7 @@ def crear_cliente_spotify():
             client_secret=client_secret,
             redirect_uri=SPOTIFY_REDIRECT_URI,
             scope=scope,
+            cache_path=cache_path,
         ))
     except Exception as e:
         log.error(f"❌ ERROR al conectar con Spotify: {e}")
@@ -431,7 +437,14 @@ def grabar_audio(archivo_wav, duracion, device_id, meta, nombre_playlist, carpet
         except Exception as e:
             log.warning(f"⚠️ Intento {intento + 1}/{REINTENTOS}: no se pudo iniciar la reproducción: {e}")
         time.sleep(1.5)
-        estado = sp.current_playback()
+        # El endpoint /me/player devuelve a veces un 401 "Access token missing" espurio
+        # (con token válido). No debe abortar la corrida: lo tratamos como estado desconocido
+        # y dejamos que el propio bucle de reintentos vuelva a comprobar.
+        try:
+            estado = sp.current_playback()
+        except Exception as e:
+            log.warning(f"⚠️ Intento {intento + 1}/{REINTENTOS}: no se pudo verificar la reproducción ({e}). Reintentando…")
+            estado = None
         if estado and estado.get("is_playing"):
             reproduciendo = True
             break
